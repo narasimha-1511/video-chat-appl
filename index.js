@@ -45,6 +45,16 @@ io.on("connection", (socket) => {
     io.to(socket.id).emit("join-room", { email, room });
   });
 
+
+  socket.on("call-user", ({ to, offer }) => {
+    console.log("calling user", to);
+    io.to(to).emit("incomming-call", { offer, from: socket.id });
+  });
+
+  socket.on("call-accepted", ({ answer, to }) => {
+    console.log("call accepted", to);
+    io.to(to).emit("call-accepted", { answer, from: socket.id });
+  });
  
   socket.on("disconnect", () => {
     console.log("user disconnected");

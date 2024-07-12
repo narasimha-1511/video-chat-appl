@@ -8,12 +8,6 @@ const Room = () => {
   const [remoteStream, setRemoteStream] = useState(null);
   const navigate = useNavigate();
 
-  const handleUserJoined = ({ email, id }) => {
-    console.log("user joined", email, id);
-    setFriend(email);
-    setRemoteSocketId(id);
-  };
-
   const handleIncomingCall = useCallback(
     async ({ offer, from }) => {
       console.log("incoming call", offer, from);
@@ -23,15 +17,28 @@ const Room = () => {
         audio: true,
         video: true,
       });
-
       setMyStream(stream);
 
       const answer = await peer.getAnswer(offer);
-
       socket.emit("call-accepted", { answer, to: from });
     },
     [socket]
   );
+
+  const handleCallAccepted = useCallback(
+    async ({ answer, from }) => {
+      console.log("call accepted", answer, from);
+      sendStreams();
+      await peer.setremoteDescription(answer);
+    },
+    [sendStreams]
+  );
+
+  const handleUserJoined = ({ email, id }) => {
+    console.log("user joined", email, id);
+    setFriend(email);
+    setRemoteSocketId(id);
+  };
 
   //this is to reconnect the stream when the user joins the room
 
