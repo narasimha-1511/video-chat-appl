@@ -33,6 +33,18 @@ const socketIdToEmailMap = new Map();
 io.on("connection", (socket) => {
   console.log("a user connected", socket.id);
 
+  socket.on("join-room", ({ email, room }) => {
+    console.log("user joined room", email, room);
+
+    emailToSocketIdMap.set(email, socket.id);
+    socketIdToEmailMap.set(socket.id, email);
+
+    io.to(room).emit("user-joined", { email: email, id: socket.id });
+
+    socket.join(room);
+    io.to(socket.id).emit("join-room", { email, room });
+  });
+
  
   socket.on("disconnect", () => {
     console.log("user disconnected");
