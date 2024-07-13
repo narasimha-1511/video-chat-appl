@@ -1,6 +1,8 @@
 const { Server } = require("socket.io");
-const app = require("express")();
 const Express = require("express");
+
+const app = Express();
+
 const server = require("http").createServer(app);
 const cors = require("cors");
 const path = require("path");
@@ -15,17 +17,17 @@ const io = new Server(server, {
   allowEIO3: true,
 });
 
-
 app.use(cors());
 
-app.use(Express.static(path.join(path.resolve(), "server/client/dist")));
+const dir = path.resolve();
+
+app.use(Express.static(path.join(dir, "server/client/dist")));
 
 app.get("*", (req, res) => {
   res.sendFile(
     path.join(path.resolve(), "server", "client", "dist", "index.html")
   );
 });
-
 
 const emailToSocketIdMap = new Map();
 const socketIdToEmailMap = new Map();
@@ -45,7 +47,6 @@ io.on("connection", (socket) => {
     io.to(socket.id).emit("join-room", { email, room });
   });
 
-
   socket.on("call-user", ({ to, offer }) => {
     console.log("calling user", to);
     io.to(to).emit("incomming-call", { offer, from: socket.id });
@@ -55,15 +56,26 @@ io.on("connection", (socket) => {
     console.log("call accepted", to);
     io.to(to).emit("call-accepted", { answer, from: socket.id });
   });
- 
+
+  socket.on("peer-negotiation-needed", ({ offer, to }) => {
+    console.log("peer negotiation needed", to);
+    io.to(to).emit("peer-negotiation-needed", { offer, from: socket.id });
+  });
+
+  socket.on("peer-negotiation-done", ({ answer, to }) => {
+    io.to(to).emit("peer-negotiation-final", { answer, from: socket.id });
+  });
+
   socket.on("disconnect", () => {
     console.log("user disconnected");
 
     const email = socketIdToEmailMap.get(socket.id);
+
+    socketIdToEmailMap.delete(socket.id);
+
     if (email) {
       emailToSocketIdMap.delete(email);
     }
-    socketIdToEmailMap.delete(socket.id);
   });
 });
 
