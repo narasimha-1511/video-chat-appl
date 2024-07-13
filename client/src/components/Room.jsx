@@ -1,12 +1,22 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { useSocket } from "../context/SocketProvider";
 import ReactPlayer from "react-player";
+import peer from "../service/peer";
+import { useNavigate } from "react-router-dom";
 
 const Room = () => {
+  const socket = useSocket();
   const [remoteSocketId, setRemoteSocketId] = useState(null);
   const [friend, setFriend] = useState(null);
   const [myStream, setMyStream] = useState(null);
   const [remoteStream, setRemoteStream] = useState(null);
   const navigate = useNavigate();
+
+  const handleUserJoined = ({ email, id }) => {
+    console.log("user joined", email, id);
+    setFriend(email);
+    setRemoteSocketId(id);
+  };
 
   const handleIncomingCall = useCallback(
     async ({ offer, from }) => {
@@ -17,13 +27,21 @@ const Room = () => {
         audio: true,
         video: true,
       });
+
       setMyStream(stream);
 
       const answer = await peer.getAnswer(offer);
+
       socket.emit("call-accepted", { answer, to: from });
     },
     [socket]
   );
+
+  const sendStreams = useCallback(() => {
+    for (const track of myStream.getTracks()) {
+      peer.peer.addTrack(track, myStream);
+    }
+  }, [myStream]);
 
   const handleCallAccepted = useCallback(
     async ({ answer, from }) => {
@@ -34,13 +52,12 @@ const Room = () => {
     [sendStreams]
   );
 
-  const handleUserJoined = ({ email, id }) => {
-    console.log("user joined", email, id);
-    setFriend(email);
-    setRemoteSocketId(id);
-  };
-
-  //this is to reconnect the stream when the user joins the room
+  useEffect(() => {
+    peer.peer.addEventListener("track", async (e) => {
+      console.log("track", e.streams);
+      setRemoteStream(e.streams[0]);
+    });
+  }, []);
 
   useEffect(() => {
     socket.on("user-joined", handleUserJoined);
@@ -95,7 +112,9 @@ const Room = () => {
       {remoteSocketId && (
         <button onClick={hanldeCallUser}> Start Video Call</button>
       )}
-      {remoteSocketId && <button>Accept Video Call</button>}
+      {remoteSocketId && (
+        <button onClick={sendStreams}>Accept Video Call</button>
+      )}
       {myStream ? <h1> Video Call Started</h1> : ""}
       <div className="videos">
         {myStream && (
